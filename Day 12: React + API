@@ -1,0 +1,112 @@
+//Backend (Node + Express)
+import express from "express";
+import cors from "cors";
+
+const app = express();
+const PORT = 5000;
+
+app.use(cors());
+app.use(express.json()); // parse JSON body
+
+// In-memory todo list
+let todos = [];
+
+// Get all todos
+app.get("/todos", (req, res) => {
+  res.json(todos);
+});
+
+// Add todo
+app.post("/todos", (req, res) => {
+  const { task } = req.body;
+  if (!task) return res.status(400).json({ error: "Task required" });
+
+  const newTodo = { id: Date.now(), task };
+  todos.push(newTodo);
+  res.json(newTodo);
+});
+
+// Delete todo
+app.delete("/todos/:id", (req, res) => {
+  const { id } = req.params;
+  todos = todos.filter((t) => t.id !== parseInt(id));
+  res.json({ message: "Deleted" });
+});
+
+app.listen(PORT, () => {
+  console.log(` Backend running at http://localhost:${PORT}`);
+});
+
+
+
+Frontend (React)
+import { useState, useEffect } from "react";
+
+export default function App() {
+  const [task, setTask] = useState("");
+  const [todos, setTodos] = useState([]);
+
+  // fetch todos from backend
+  useEffect(() => {
+    fetch("http://localhost:5000/todos")
+      .then((res) => res.json())
+      .then((data) => setTodos(data));
+  }, []);
+
+  const addTask = () => {
+    if (!task.trim()) return;
+
+    fetch("http://localhost:5000/todos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task }),
+    })
+      .then((res) => res.json())
+      .then((newTodo) => setTodos([...todos, newTodo]));
+
+    setTask("");
+  };
+
+  const deleteTask = (id) => {
+    fetch(`http://localhost:5000/todos/${id}`, { method: "DELETE" })
+      .then(() => setTodos(todos.filter((t) => t.id !== id)));
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center bg-gray-100 p-6">
+      <h1 className="text-2xl font-bold mb-4">To-Do List ✅</h1>
+
+      <div className="flex gap-2 mb-4">
+        <input
+          value={task}
+          onChange={(e) => setTask(e.target.value)}
+          placeholder="Enter task..."
+          className="border p-2 rounded w-64"
+        />
+        <button
+          onClick={addTask}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Add
+        </button>
+      </div>
+
+      <ul className="w-72">
+        {todos.map((t) => (
+          <li
+            key={t.id}
+            className="flex justify-between items-center bg-white p-2 mb-2 rounded shadow"
+          >
+            {t.task}
+            <button
+              onClick={() => deleteTask(t.id)}
+              className="text-red-600"
+            >
+              
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
